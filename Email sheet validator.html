@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Email sheet validator</title>
+<style>
+:root{--bg:#eef1f4;--pan:#fff;--ink:#1b2733;--mu:#5b6b7a;--ln:#d3dae1;--acc:#1f5fbf;--er:#c62828;--erb:#fdd9d5;--wa:#8a5a00;--wab:#fff0c2;--ok:#1b7a3d;--okb:#d8f2e0;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a21;--pan:#1c242d;--ink:#e6ecf2;--mu:#93a3b3;--ln:#33404d;--acc:#6aa5ff;--er:#ff8a80;--erb:#4a2220;--wa:#ffd27a;--wab:#4a3a12;--ok:#7fdc9c;--okb:#1c3a28;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141a21;--pan:#1c242d;--ink:#e6ecf2;--mu:#93a3b3;--ln:#33404d;--acc:#6aa5ff;--er:#ff8a80;--erb:#4a2220;--wa:#ffd27a;--wab:#4a3a12;--ok:#7fdc9c;--okb:#1c3a28;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1500px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:var(--mu);margin:0 0 16px;max-width:75ch}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.pan{background:var(--pan);border:1px solid var(--ln);border-radius:8px;padding:14px}
+.drop{flex:1 1 280px;border:2px dashed var(--ln);cursor:pointer;display:block;min-height:92px;position:relative}
+.drop.on{border-color:var(--acc)}.drop.has{border-style:solid}
+.drop b{display:block}.drop small{color:var(--mu)}.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop button{position:relative;z-index:2;margin-top:6px}
+.set{flex:1 1 300px;display:grid;gap:8px;align-content:start}
+.set label{display:grid;gap:2px;font-size:12px;color:var(--mu)}
+select,input[type=text],button{font:inherit;color:var(--ink);background:var(--pan);border:1px solid var(--ln);border-radius:6px;padding:5px 8px}
+button{cursor:pointer}button:hover{border-color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}
+.st{padding:6px 12px;border-radius:6px;font-weight:600}.st.ok{background:var(--okb);color:var(--ok)}.st.bad{background:var(--erb);color:var(--er)}.st.wr{background:var(--wab);color:var(--wa)}
+.cols{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:12px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+ul.iss{list-style:none;margin:0;padding:0;max-height:70vh;overflow:auto}
+ul.iss li{padding:7px 8px;border-bottom:1px solid var(--ln);cursor:pointer;border-left:4px solid transparent}
+ul.iss li:hover{background:var(--bg)}ul.iss li.error{border-left-color:var(--er)}ul.iss li.warn{border-left-color:var(--wa)}
+ul.iss li.g{cursor:default}.loc{font-size:12px;color:var(--mu)}
+.tabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.tabs button.act{background:var(--acc);color:#fff;border-color:var(--acc)}
+.wrap{overflow:auto;max-height:70vh;border:1px solid var(--ln);border-radius:6px}
+table{border-collapse:collapse;font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+th,td{border:1px solid var(--ln);padding:3px 6px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--pan)}
+th{position:sticky;top:0;z-index:1;background:var(--bg);text-align:left}
+td.rn,th.rn{position:sticky;left:0;color:var(--mu);background:var(--bg);text-align:right}th.rn{z-index:2}
+.e{background:var(--erb)!important;color:var(--er);font-weight:600}.w{background:var(--wab)!important;color:var(--wa)}
+td.rn.e,td.rn.w{font-weight:700}
+.pulse{outline:3px solid var(--acc);outline-offset:-2px}
+.empty{color:var(--mu);padding:18px}.chip{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--ln)}
+@media(prefers-reduced-motion:no-preference){.pulse{transition:outline-color .3s}}
+</style></head><body><main>
+<h1>Email sheet validator</h1>
+<p class="sub">Upload the main sheet (and the attachment sheet if the email carries one) as CSV exports from Google Sheets. Nothing leaves your browser. Every problem is marked on the exact cell and listed on the left.</p>
+<div class="row">
+ <label class="pan drop" id="dm"><b>Main sheet</b><small id="nm">Drop a .csv here or click to choose</small><input type="file" accept=".csv,.tsv,.txt"></label>
+ <label class="pan drop" id="da"><b>Attachment sheet</b><small id="na">Only when the email has an attachment or inline table</small><input type="file" accept=".csv,.tsv,.txt"></label>
+ <div class="pan set">
+  <label>Email type<select id="mode"><option value="auto">Auto-detect from main sheet columns</option><option value="none">No attachment</option><option value="csv">CSV attachment (has_attachment + user_attachment_filter_key)</option><option value="table">Inline table (dynamic_table_N + table_filter_key)</option></select></label>
+  <label>Empty email_template_id is<select id="tpl"><option value="warn">a warning</option><option value="error">an error</option><option value="ignore">ignored</option></select></label>
+  <label>Required sender_email domain (optional)<input type="text" id="dom" placeholder="zomato.com"></label>
+ </div>
+</div>
+<div class="bar" id="bar"></div>
+<div class="cols">
+ <div class="pan"><div class="tools"><select id="fs"><option value="all">All issues</option><option value="error">Errors only</option><option value="warn">Warnings only</option></select><input type="text" id="fq" placeholder="Filter text" style="flex:1;min-width:90px"><button id="cp" title="Copy all issues as tab-separated text">Copy report</button></div><ul class="iss" id="iss"></ul></div>
+ <div class="pan"><div class="tabs"><button data-t="main" class="act">Main sheet</button><button data-t="att">Attachment sheet</button><label style="margin-left:auto"><input type="checkbox" id="only" checked> Only rows with issues</label><span id="pg"></span></div><div class="wrap" id="grid"></div></div>
+</div>
+</main>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S={main:null,att:null,issues:[],tab:'main',only:true,page:0,lim:300,focus:null,mode:'none'};
+const add=(sh,r,c,sev,msg)=>S.issues.push({sh,r,c,sev,msg});
+const norm=s=>s.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+const ERRV=/^(#N\/A|#REF!|#VALUE!|#DIV\/0!|#NAME\?|#NULL!|#NUM!|#ERROR!|Err:\d+|NaN|null|undefined)$/i,INV=/[\u00A0\u200B-\u200D\uFEFF]/,EM=/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/;
+function parseCSV(t){if(t.charCodeAt(0)===0xFEFF)t=t.slice(1);const l=t.split('\n',1)[0],d=l.split('\t').length>l.split(',').length?'\t':',';
+ const rows=[];let row=[],f='',q=false;
+ for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+  else if(c=='"'&&f==='')q=true;else if(c==d){row.push(f);f=''}
+  else if(c=='\n'){row.push(f);rows.push(row);row=[];f=''}else if(c!='\r')f+=c}
+ if(f!==''||row.length){row.push(f);rows.push(row)}return rows}
+function mk(name,rows){while(rows.length&&rows[rows.length-1].every(x=>x.trim()===''))rows.pop();return{name,head:rows[0]||[],rows:rows.slice(1)}}
+function load(k,file){const r=new FileReader();r.onload=()=>{S[k]=mk(file.name,parseCSV(r.result));$(k=='main'?'#nm':'#na').textContent=file.name+' · '+S[k].rows.length+' rows';$(k=='main'?'#dm':'#da').classList.add('has');S.page=0;run()};r.readAsText(file)}
+function cell(sh,i,j,v,strict){const t=v.trim();
+ if(ERRV.test(t))add(sh,i,j,'error','Spreadsheet error or placeholder value “'+t+'”');
+ if(INV.test(v))add(sh,i,j,strict?'error':'warn','Hidden character (non-breaking or zero-width space) in cell');
+ else if(v!==t)add(sh,i,j,strict?'error':'warn','Leading or trailing space in cell')}
+function hh(sh,key){const seen={};
+ sh.head.forEach((h,j)=>{const t=h.trim(),has=sh.rows.some(r=>(r[j]||'').trim()!=='');
+  if(t===''){if(has){add(key,-1,j,'error','Column has data but no header – the ETL will not read it');sh.rows.forEach((r,i)=>{if((r[j]||'').trim()!=='')add(key,i,j,'error','Data under a column with no header')})}else add(key,-1,j,'warn','Empty header column – delete it');return}
+  if(h!==t)add(key,-1,j,'error','Header has leading or trailing spaces');
+  const l=t.toLowerCase();if(seen[l]!==undefined)add(key,-1,j,'error','Duplicate header “'+t+'” (same as column '+(seen[l]+1)+')');else seen[l]=j});
+ sh.rows.forEach((r,i)=>{if(r.length>sh.head.length&&r.slice(sh.head.length).some(x=>x.trim()!==''))add(key,i,-1,'error','Row has more filled cells than there are headers')})}
+function col(sh,key,name,req){const t=sh.head.map(h=>h.trim());let j=t.indexOf(name);if(j>=0)return j;
+ j=t.findIndex(h=>norm(h)===name);if(j>=0){add(key,-1,j,'error','Header must be exactly “'+name+'”');return j}
+ if(req)add('all',-1,-1,'error',(key=='main'?'Main':'Attachment')+' sheet is missing required column “'+name+'”');return -1}
+const idMsg=v=>/^\d+$/.test(v)?'':/^\d+\.0+$/.test(v)?'ID has a decimal part (“.0”) – remove it':/e\+?\d+$/i.test(v)?'ID is in scientific notation – format the column as plain number':'ID must be digits only';
+function run(){S.issues=[];const C={mode:$('#mode').value,tpl:$('#tpl').value,dom:$('#dom').value.trim().toLowerCase().replace(/^@/,'')};
+ const M=S.main,A=S.att;if(!M){render();return}
+ hh(M,'main');const mh=M.head.map(h=>h.trim()),hasN=n=>mh.some(t=>norm(t)===n);
+ const ci={};['user_id','email_template_id','email_subject','sender_name','sender_email'].forEach(n=>ci[n]=col(M,'main',n,true));
+ const fam={};mh.forEach((t,j)=>{let m;if(m=t.match(/^(bcc_id|cc_id|dynamic_table)_(\d+)$/))(fam[m[1]]??={})[+m[2]]=j;else if(m=t.match(/^var_(\d+)_(name|value)$/))((fam.var??={})[+m[1]]??={})[m[2]]=j});
+ const tcols=Object.values(fam.dynamic_table||{});
+ let mode=C.mode;if(mode=='auto')mode=(hasN('has_attachment')||hasN('user_attachment_filter_key'))?'csv':(tcols.length||hasN('table_filter_key'))?'table':'none';S.mode=mode;
+ const csvN=['has_attachment','user_attachment_filter_key'],tabN=['table_filter_key'];
+ const known=new Set(['user_id','email_template_id','email_subject','sender_name','sender_email',...csvN,...tabN]);
+ mh.forEach((t,j)=>{const n=norm(t);if(t==='')return;
+  if(mode=='none'&&(csvN.includes(n)||tabN.includes(n)||/^dynamic_table_\d+$/.test(t)))add('main',-1,j,'error','Not allowed when the email has no attachment – remove this column');
+  else if(mode=='csv'&&(tabN.includes(n)||/^dynamic_table_\d+$/.test(t)))add('main',-1,j,'error','Inline-table column in a CSV-attachment sheet');
+  else if(mode=='table'&&csvN.includes(n))add('main',-1,j,'error','CSV-attachment column in an inline-table sheet');
+  else if(!known.has(t)&&!known.has(n)&&!/^(bcc_id|cc_id|dynamic_table)_\d+$|^var_\d+_(name|value)$/.test(t))add('main',-1,j,'warn','Unrecognised column – the ETL will probably ignore it')});
+ for(const f of ['bcc_id','cc_id','dynamic_table','var']){const o=fam[f];if(!o)continue;const ns=Object.keys(o).map(Number),mx=Math.max(...ns);
+  for(let k=1;k<mx;k++)if(!o[k]){const c=f=='var'?Object.values(o[mx])[0]:o[mx];add('main',-1,c,'warn',f+'_'+k+(f=='var'?'_name/value':'')+' is missing – numbering should be continuous from 1')}}
+ for(const [n,p] of Object.entries(fam.var||{})){if(p.name===undefined)add('main',-1,p.value,'error','var_'+n+'_value has no matching var_'+n+'_name column');if(p.value===undefined)add('main',-1,p.name,'error','var_'+n+'_name has no matching var_'+n+'_value column')}
+ let ha=-1,kc=-1,keyName=mode=='csv'?'user_attachment_filter_key':'table_filter_key',ai={};
+ if(mode=='csv'){ha=col(M,'main','has_attachment',true);kc=col(M,'main',keyName,true)}
+ if(mode=='table'){kc=col(M,'main',keyName,true);if(!tcols.length)add('all',-1,-1,'error','Main sheet needs at least one dynamic_table_1 column')}
+ if(mode=='none'&&A)add('all',-1,-1,'error','An attachment sheet was uploaded, but the main sheet has no has_attachment / user_attachment_filter_key (or dynamic_table_N / table_filter_key) columns');
+ if(mode!='none'&&!A)add('all',-1,-1,'error','Attachment sheet is required for this email type – upload it');
+ const attE=new Map,attN=new Map,push=(m,k,i)=>{(m.get(k)||m.set(k,[]).get(k)).push(i)};
+ const useA=A&&mode!='none';
+ if(useA){hh(A,'att');ai.u=col(A,'att','user_id',true);ai.k=col(A,'att',keyName,true);if(mode=='table')ai.t=col(A,'att','table_name',true);
+  const idc=[ai.u,ai.k,ai.t];const dc=A.head.map((h,j)=>j).filter(j=>!idc.includes(j)&&A.head[j].trim()!=='');
+  if(!A.rows.length)add('all',-1,-1,'error','Attachment sheet has no data rows');if(!dc.length)add('all',-1,-1,'error','Attachment sheet has no data columns besides the identifier columns');
+  dc.forEach(j=>{if(!A.rows.some(r=>(r[j]||'').trim()!==''))add('att',-1,j,'warn','Column is empty in every row')});
+  A.rows.forEach((r,i)=>{const g=(j)=>j>=0?(r[j]??'').trim():'';push(attE,g(ai.u)+'|'+g(ai.k)+'|'+(ai.t>=0?g(ai.t):''),i);push(attN,g(ai.u)+'|'+norm(g(ai.k))+'|'+(ai.t>=0?norm(g(ai.t)):''),i)})}
+ const strict=new Set([ci.user_id,ci.sender_email,ha,kc,...tcols,...Object.values(fam.cc_id||{}),...Object.values(fam.bcc_id||{})]);
+ const mainE=new Map,mainN=new Map,tabs=new Map,dup=new Map,tpls={},sigs=[];
+ M.rows.forEach((r,i)=>{const g=j=>j>=0?(r[j]??'').trim():'';
+  if(r.every(x=>x.trim()==='')){add('main',i,-1,'warn','Blank row in the middle of the data');return}
+  r.forEach((v,j)=>cell('main',i,j,v,strict.has(j)));
+  const uid=g(ci.user_id);if(ci.user_id>=0){if(!uid)add('main',i,ci.user_id,'error','user_id is empty');else{const m=idMsg(uid);if(m)add('main',i,ci.user_id,'error','user_id: '+m)}}
+  const tp=g(ci.email_template_id);if(ci.email_template_id>=0){if(!tp){if(C.tpl!='ignore')add('main',i,ci.email_template_id,C.tpl,'email_template_id is empty')}else{if(/\s/.test(tp))add('main',i,ci.email_template_id,'error','email_template_id contains spaces');(tpls[tp]??=[]).push(i)}}
+  const sb=r[ci.email_subject]??'';if(ci.email_subject>=0){if(!sb.trim())add('main',i,ci.email_subject,'error','email_subject is empty');else if(/[\r\n]/.test(sb))add('main',i,ci.email_subject,'error','email_subject contains a line break');else if(sb.trim().length>150)add('main',i,ci.email_subject,'warn','email_subject is very long ('+sb.trim().length+' characters)')}
+  if(ci.sender_name>=0&&!g(ci.sender_name))add('main',i,ci.sender_name,'error','sender_name is empty');
+  const se=g(ci.sender_email);if(ci.sender_email>=0){if(!EM.test(se))add('main',i,ci.sender_email,'error',se?'sender_email must be one valid email address':'sender_email is empty');else if(C.dom&&!se.toLowerCase().endsWith('@'+C.dom))add('main',i,ci.sender_email,'warn','sender_email is not on @'+C.dom)}
+  const seen={};for(const f of ['bcc_id','cc_id'])for(const [n,j] of Object.entries(fam[f]||{})){const v=g(j);if(!v)continue;
+   if(EM.test(v))add('main',i,j,'error',f+'_'+n+' expects a numeric user ID, not an email');else{const m=idMsg(v);if(m)add('main',i,j,'error',f+'_'+n+': '+m);
+    else{if(seen[v])add('main',i,j,'warn','Same ID already used in '+seen[v]);else seen[v]=f+'_'+n;if(v===uid)add('main',i,j,'warn','Same as the recipient user_id')}}}
+  const names=[];for(const [n,p] of Object.entries(fam.var||{})){const nm=g(p.name),vl=g(p.value);
+   if(p.name!==undefined&&nm){if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(nm))add('main',i,p.name,'error','Variable name must use letters, digits and underscores only, and not start with a digit');if(names.includes(nm))add('main',i,p.name,'error','Variable “'+nm+'” is defined twice in this row');names.push(nm)}
+   if(nm&&p.value!==undefined&&!vl)add('main',i,p.value,'warn','Variable “'+nm+'” has an empty value');if(!nm&&vl&&p.name!==undefined)add('main',i,p.name,'error','Value present but var_'+n+'_name is empty')}
+  sigs.push([i,names.join(',')]);
+  if(mode=='none'){const k=[uid,g(ci.email_template_id),sb.trim()].join('|');if(dup.has(k))add('main',i,ci.user_id,'warn','Same user, template and subject as row '+(dup.get(k)+2)+' – duplicate email?');else dup.set(k,i)}
+  else{const key=g(kc);const k=uid+'|'+key;
+   if(mode=='csv'){const h=g(ha);if(ha>=0){if(h===''||!/^[01]$/.test(h))add('main',i,ha,'error',h===''?'has_attachment is empty (use 1 or 0)':'has_attachment must be 1 or 0, found “'+h+'”');
+     if(h==='1'){if(!key)add('main',i,kc,'error','has_attachment is 1 but user_attachment_filter_key is empty')}
+     else if(h==='0'&&key)add('main',i,kc,'warn','has_attachment is 0 but a filter key is set')}
+    if(key&&(h==='1'||h==='')&&useA&&!attE.has(uid+'|'+key+'|')){const n=attN.get(uid+'|'+norm(key)+'|');add('main',i,kc,'error','No rows in the attachment sheet for this user_id + key'+(n?' – attachment row '+(n[0]+2)+' looks the same but differs in case/spacing':''))}}
+   else{const ts=tcols.map(j=>g(j)).filter(Boolean);tabs.set(i,ts);
+    if(ts.length&&!key)add('main',i,kc,'error','Inline table is set but table_filter_key is empty');if(!ts.length)add('main',i,tcols[0]??-1,'error','dynamic_table_1 is empty');else if(!key){}
+    if(key&&useA)for(const t of ts)if(!attE.has(uid+'|'+key+'|'+t)){const n=attN.get(uid+'|'+norm(key)+'|'+norm(t));add('main',i,kc,'error','No rows in the attachment sheet for user_id + table “'+t+'” + key'+(n?' – attachment row '+(n[0]+2)+' differs only in case/spacing':''))}}
+   if(uid&&key){if(mainE.has(k))add('main',i,kc,'error','Same user_id + key as row '+(mainE.get(k)+2)+' – attachment rows would be ambiguous');else{mainE.set(k,i);mainN.set(uid+'|'+norm(key),i)}}}
+ });
+ const tk=Object.keys(tpls);if(tk.length>1){const top=tk.sort((a,b)=>tpls[b].length-tpls[a].length)[0];tk.slice(1).forEach(t=>tpls[t].forEach(i=>add('main',i,ci.email_template_id,'warn','Different template ID from most rows (“'+top+'”) – one sheet should trigger one email')))}
+ const cnt={};sigs.forEach(([i,s])=>cnt[s]=(cnt[s]||0)+1);const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];if(Object.keys(cnt).length>1)sigs.forEach(([i,s])=>{if(s!==top)add('main',i,-1,'warn','Variable names differ from most rows (“'+(top||'none')+'”)')});
+ if(useA&&ai.u>=0&&ai.k>=0){const seenR=new Set;
+  A.rows.forEach((r,i)=>{const g=j=>j>=0?(r[j]??'').trim():'';
+   if(r.every(x=>x.trim()==='')){add('att',i,-1,'warn','Blank row in the middle of the data');return}
+   r.forEach((v,j)=>cell('att',i,j,v,[ai.u,ai.k,ai.t].includes(j)));
+   const u=g(ai.u),k=g(ai.k);if(!u)add('att',i,ai.u,'error','user_id is empty');else{const m=idMsg(u);if(m)add('att',i,ai.u,'error','user_id: '+m)}
+   if(!k)add('att',i,ai.k,'error',keyName+' is empty');
+   else if(u&&!mainE.has(u+'|'+k)){const n=mainN.get(u+'|'+norm(k));add('att',i,ai.k,'error',n!==undefined?'Does not exactly match the key in main row '+(n+2)+' (case or spacing differs)':'No main-sheet row has this user_id + key – this row will never be used')}
+   if(mode=='table'){const t=g(ai.t);if(!t)add('att',i,ai.t,'error','table_name is empty');else if(u&&k&&mainE.has(u+'|'+k)&&!(tabs.get(mainE.get(u+'|'+k))||[]).includes(t))add('att',i,ai.t,'error','Main row '+(mainE.get(u+'|'+k)+2)+' does not reference table “'+t+'”')}
+   const idc=[ai.u,ai.k,ai.t];if(r.every((v,j)=>idc.includes(j)||(v??'').trim()===''))add('att',i,-1,'warn','No data in this row apart from the identifiers');
+   const s=JSON.stringify(r);if(seenR.has(s))add('att',i,-1,'warn','Exact duplicate of an earlier row');seenR.add(s)})}
+ render()}
+const sevRank={error:2,warn:1};
+function render(){const I=S.issues,er=I.filter(i=>i.sev=='error').length,wa=I.length-er,M=S.main;
+ const lab={none:'No attachment',csv:'CSV attachment',table:'Inline table'}[S.mode];
+ $('#bar').innerHTML=!M?'<span class="empty">Upload the main sheet to begin.</span>':(er?'<span class="st bad">'+er+' error'+(er>1?'s':'')+' to fix</span>':'<span class="st ok">No errors – format looks valid</span>')+(wa?'<span class="st wr">'+wa+' warning'+(wa>1?'s':'')+'</span>':'')+'<span class="chip">Mode: '+lab+'</span>'+(M?'<span class="chip">Main: '+M.rows.length+' rows</span>':'')+(S.att?'<span class="chip">Attachment: '+S.att.rows.length+' rows</span>':'');
+ const fs=$('#fs').value,fq=$('#fq').value.toLowerCase();
+ const L=I.filter(i=>(fs=='all'||i.sev==fs)&&(!fq||(i.msg+i.sh+colName(i)).toLowerCase().includes(fq))).sort((a,b)=>(sevRank[b.sev]-sevRank[a.sev])||a.sh.localeCompare(b.sh)||a.r-b.r||a.c-b.c);
+ $('#iss').innerHTML=(L.length?L.slice(0,S.lim).map(i=>{const k=I.indexOf(i);return '<li class="'+i.sev+(i.sh=='all'?' g':'')+'" data-k="'+k+'"><div class="loc">'+where(i)+'</div>'+esc(i.msg)+'</li>'}).join('')+(L.length>S.lim?'<li class="g" id="more">Showing '+S.lim+' of '+L.length+' – click to show more</li>':''):'<li class="g empty">'+(M?'No issues match.':'Issues appear here.')+'</li>');
+ document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('act',b.dataset.t==S.tab));
+ $('#grid').innerHTML=grid(S.tab);
+ if(S.focus){const f=S.focus,el=document.getElementById(f.r<0?'h-'+f.sh+'-'+f.c:'c-'+f.sh+'-'+f.r+'-'+f.c)||document.getElementById('r-'+f.sh+'-'+f.r);if(el){el.scrollIntoView({block:'center',inline:'center'});el.classList.add('pulse')}S.focus=null}}
+function colName(i){const d=S[i.sh];if(!d||i.c<0)return '';return (d.head[i.c]||'').trim()||'(no header)'}
+function where(i){if(i.sh=='all')return 'Whole sheet';const n=i.sh=='main'?'Main':'Attachment';return n+' · '+(i.r<0?'header':'row '+(i.r+2))+(i.c>=0?' · '+esc(colName(i)):'')}
+function grid(sh){const d=S[sh];if(!d)return '<p class="empty">Upload this sheet to see it here.</p>';
+ const by=new Map,rows=new Set;S.issues.forEach(i=>{if(i.sh!=sh)return;const k=i.r+'|'+i.c;(by.get(k)||by.set(k,[]).get(k)).push(i);if(i.r>=0)rows.add(i.r)});
+ const cls=a=>a?(a.some(x=>x.sev=='error')?'e':'w'):'',tip=a=>a?' title="'+esc(a.map(x=>x.msg).join('\n'))+'"':'';
+ let idx=d.rows.map((_,i)=>i);if(S.only&&S.issues.length)idx=idx.filter(i=>rows.has(i));
+ if(S.focus&&S.focus.sh==sh&&S.focus.r>=0){const p=idx.indexOf(S.focus.r);if(p>=0)S.page=Math.floor(p/100)}
+ const pages=Math.max(1,Math.ceil(idx.length/100));S.page=Math.min(S.page,pages-1);
+ $('#pg').innerHTML=pages>1?'<button id="pp">‹</button> page '+(S.page+1)+' / '+pages+' <button id="pn">›</button>':'';
+ const w=Math.max(d.head.length,...idx.slice(S.page*100,S.page*100+100).map(i=>d.rows[i].length),1);
+ let h='<table><thead><tr><th class="rn">#</th>';
+ for(let j=0;j<w;j++){const a=by.get('-1|'+j);h+='<th id="h-'+sh+'-'+j+'" class="'+cls(a)+'"'+tip(a)+'>'+(d.head[j]===undefined||d.head[j].trim()===''?'(no header)':esc(d.head[j]))+'</th>'}
+ h+='</tr></thead><tbody>';
+ idx.slice(S.page*100,S.page*100+100).forEach(i=>{const ra=by.get(i+'|-1');h+='<tr><td class="rn '+cls(ra)+'" id="r-'+sh+'-'+i+'"'+tip(ra)+'>'+(i+2)+'</td>';
+  for(let j=0;j<w;j++){const a=by.get(i+'|'+j);h+='<td id="c-'+sh+'-'+i+'-'+j+'" class="'+cls(a)+'"'+tip(a)+'>'+esc(d.rows[i][j]??'')+'</td>'}h+='</tr>'});
+ return h+'</tbody></table>'+(idx.length?'':'<p class="empty">No rows with issues.</p>')}
+document.querySelectorAll('.drop').forEach(z=>{const k=z.id=='dm'?'main':'att',inp=z.querySelector('input');
+ inp.onchange=()=>{if(inp.files[0])load(k,inp.files[0]);inp.value=''};
+ z.ondragover=e=>{e.preventDefault();z.classList.add('on')};z.ondragleave=()=>z.classList.remove('on');
+ z.ondrop=e=>{e.preventDefault();z.classList.remove('on');if(e.dataTransfer.files[0])load(k,e.dataTransfer.files[0])}});
+['mode','tpl','dom'].forEach(id=>$('#'+id).addEventListener('input',run));
+$('#fs').oninput=$('#fq').oninput=()=>{S.lim=300;render()};
+$('#only').onchange=e=>{S.only=e.target.checked;S.page=0;render()};
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button[data-t]');if(b){S.tab=b.dataset.t;S.page=0;render()}};
+$('#grid').parentNode.onclick=e=>{if(e.target.id=='pp'){S.page--;render()}if(e.target.id=='pn'){S.page++;render()}};
+$('#iss').onclick=e=>{if(e.target.closest('#more')){S.lim+=500;render();return}const li=e.target.closest('li[data-k]');if(!li||li.classList.contains('g'))return;const i=S.issues[+li.dataset.k];S.tab=i.sh;S.focus={sh:i.sh,r:i.r,c:i.c};render()};
+$('#cp').onclick=async()=>{const t=['sheet\trow\tcolumn\tseverity\tmessage',...S.issues.map(i=>[i.sh,i.r<0?'header':i.r+2,colName(i),i.sev,i.msg].join('\t'))].join('\n');
+ try{await navigator.clipboard.writeText(t);$('#cp').textContent='Copied'}catch(e){$('#cp').textContent='Copy blocked'}setTimeout(()=>$('#cp').textContent='Copy report',1500)};
+render();
+</script></body></html>
